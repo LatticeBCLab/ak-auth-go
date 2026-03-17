@@ -99,8 +99,9 @@ func defaultErrorHandler(c *fiberV2.Ctx, err error) error {
 	}
 
 	return c.Status(status).JSON(fiberV2.Map{
-		"code":    status,
-		"success": false,
-		"message": message,
+		"code":       status,
+		"error_code": core.ErrorCode(err),
+		"success":    false,
+		"message":    message,
 	})
 }
