@@ -1,6 +1,10 @@
 package core
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestErrorCode(t *testing.T) {
 	cases := []struct {
@@ -23,8 +27,8 @@ func TestErrorCode(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		if got := ErrorCode(tc.err); got != tc.want {
-			t.Fatalf("error code mismatch for %v, got %s, want %s", tc.err, got, tc.want)
-		}
+		got := ErrorCode(tc.err)
+		t.Logf("err=%v code=%s", tc.err, got)
+		assert.Equal(t, tc.want, got, "error code should match mapping")
 	}
 }

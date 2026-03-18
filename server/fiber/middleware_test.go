@@ -5,11 +5,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 	"testing"
 	"time"
 
 	fiberV2 "github.com/gofiber/fiber/v2"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/LatticeBCLab/ak-auth-go/core"
 	"github.com/LatticeBCLab/ak-auth-go/signer"
@@ -54,30 +54,27 @@ func TestMiddlewareSuccess(t *testing.T) {
 		Query:   q,
 		Headers: headers,
 	})
-	if err != nil {
-		t.Fatalf("sign request failed: %v", err)
-	}
+	assert.NoError(t, err, "sign request should succeed")
+	t.Logf("authorization=%s", signed.Authorization)
 
 	req, err := http.NewRequest(http.MethodGet, "/demo?page=1", nil)
-	if err != nil {
-		t.Fatalf("build request failed: %v", err)
-	}
+	assert.NoError(t, err, "build request should succeed")
 	req.Header = headers.Clone()
 	req.Header.Set(core.AuthorizationHeader, signed.Authorization)
 
 	resp, err := app.Test(req)
-	if err != nil {
-		t.Fatalf("test request failed: %v", err)
+	assert.NoError(t, err, "fiber app test request should succeed")
+	if !assert.NotNil(t, resp) {
+		return
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != fiberV2.StatusOK {
-		t.Fatalf("unexpected status: %d", resp.StatusCode)
-	}
-	body, _ := io.ReadAll(resp.Body)
-	if string(body) != "ak-001" {
-		t.Fatalf("unexpected body: %s", string(body))
-	}
+	body, err := io.ReadAll(resp.Body)
+	assert.NoError(t, err, "read response body should succeed")
+	t.Logf("status=%d body=%s", resp.StatusCode, string(body))
+
+	assert.Equal(t, fiberV2.StatusOK, resp.StatusCode)
+	assert.Equal(t, "ak-001", string(body))
 }
 
 func TestMiddlewareMissingAuthorization(t *testing.T) {
@@ -92,20 +89,18 @@ func TestMiddlewareMissingAuthorization(t *testing.T) {
 	})
 
 	req, err := http.NewRequest(http.MethodGet, "/demo", nil)
-	if err != nil {
-		t.Fatalf("build request failed: %v", err)
-	}
+	assert.NoError(t, err, "build request should succeed")
 	resp, err := app.Test(req)
-	if err != nil {
-		t.Fatalf("test request failed: %v", err)
+	assert.NoError(t, err, "fiber app test request should succeed")
+	if !assert.NotNil(t, resp) {
+		return
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != fiberV2.StatusUnauthorized {
-		t.Fatalf("unexpected status: %d", resp.StatusCode)
-	}
-	body, _ := io.ReadAll(resp.Body)
-	if !strings.Contains(string(body), "missing authorization") {
-		t.Fatalf("unexpected body: %s", string(body))
-	}
+	body, err := io.ReadAll(resp.Body)
+	assert.NoError(t, err, "read response body should succeed")
+	t.Logf("status=%d body=%s", resp.StatusCode, string(body))
+
+	assert.Equal(t, fiberV2.StatusUnauthorized, resp.StatusCode)
+	assert.Contains(t, string(body), "missing authorization")
 }

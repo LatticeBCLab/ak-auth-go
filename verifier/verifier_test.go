@@ -10,6 +10,7 @@ import (
 
 	"github.com/LatticeBCLab/ak-auth-go/core"
 	"github.com/LatticeBCLab/ak-auth-go/signer"
+	"github.com/stretchr/testify/assert"
 )
 
 type staticSecretProvider struct {
@@ -60,10 +61,9 @@ func TestVerifySuccessSHA256(t *testing.T) {
 		Query:   q,
 		Headers: headers,
 	})
-	if err != nil {
-		t.Fatalf("sign request failed: %v", err)
-	}
+	assert.NoError(t, err, "sign request should succeed")
 	headers.Set(core.AuthorizationHeader, signed.Authorization)
+	t.Logf("authorization=%s", signed.Authorization)
 
 	v := New(provider, withNowFn(func() time.Time { return now }))
 	res, err := v.Verify(context.Background(), VerifyInput{
@@ -72,15 +72,10 @@ func TestVerifySuccessSHA256(t *testing.T) {
 		Query:   q,
 		Headers: headers,
 	})
-	if err != nil {
-		t.Fatalf("verify failed: %v", err)
-	}
-	if res.AccessKeyID != "ak-001" {
-		t.Fatalf("unexpected access key id: %s", res.AccessKeyID)
-	}
-	if res.Algorithm != "HMAC-SHA256" {
-		t.Fatalf("unexpected algorithm: %s", res.Algorithm)
-	}
+	assert.NoError(t, err, "verify should succeed")
+	t.Logf("verify result: accessKeyID=%s algorithm=%s", res.AccessKeyID, res.Algorithm)
+	assert.Equal(t, "ak-001", res.AccessKeyID)
+	assert.Equal(t, "HMAC-SHA256", res.Algorithm)
 }
 
 func TestVerifySuccessSHA1AndMismatchOnDifferentAlgorithm(t *testing.T) {
@@ -99,22 +94,20 @@ func TestVerifySuccessSHA1AndMismatchOnDifferentAlgorithm(t *testing.T) {
 		Query:   nil,
 		Headers: headers,
 	})
-	if err != nil {
-		t.Fatalf("sign request failed: %v", err)
-	}
+	assert.NoError(t, err, "sign request with SHA1 should succeed")
 	headers.Set(core.AuthorizationHeader, signed.Authorization)
+	t.Logf("sha1 authorization=%s", signed.Authorization)
 
 	vSHA1 := New(provider,
 		WithSignatureAlgorithm(core.NewHMACSHA1()),
 		withNowFn(func() time.Time { return now }),
 	)
-	if _, err := vSHA1.Verify(context.Background(), VerifyInput{
+	_, err = vSHA1.Verify(context.Background(), VerifyInput{
 		Method:  "POST",
 		Path:    "/api/v1/items",
 		Headers: headers,
-	}); err != nil {
-		t.Fatalf("verify with SHA1 should succeed, got: %v", err)
-	}
+	})
+	assert.NoError(t, err, "verify with SHA1 should succeed")
 
 	vSHA256 := New(provider, withNowFn(func() time.Time { return now }))
 	_, err = vSHA256.Verify(context.Background(), VerifyInput{
@@ -122,9 +115,8 @@ func TestVerifySuccessSHA1AndMismatchOnDifferentAlgorithm(t *testing.T) {
 		Path:    "/api/v1/items",
 		Headers: headers,
 	})
-	if !errors.Is(err, core.ErrSignatureMismatch) {
-		t.Fatalf("expected signature mismatch, got: %v", err)
-	}
+	t.Logf("sha256 verify error=%v", err)
+	assert.True(t, errors.Is(err, core.ErrSignatureMismatch), "verify with mismatched algorithm should fail with signature mismatch")
 }
 
 func TestVerifyNonceReplay(t *testing.T) {
@@ -144,29 +136,26 @@ func TestVerifyNonceReplay(t *testing.T) {
 		Path:    "/api/v1/items",
 		Headers: headers,
 	})
-	if err != nil {
-		t.Fatalf("sign request failed: %v", err)
-	}
+	assert.NoError(t, err, "sign request should succeed")
 	headers.Set(core.AuthorizationHeader, signed.Authorization)
+	t.Logf("nonce=%s authorization=%s", headers.Get(core.NonceHeader), signed.Authorization)
 
 	v := New(provider,
 		WithNonceStore(nonceStore),
 		withNowFn(func() time.Time { return now }),
 	)
-	if _, err := v.Verify(context.Background(), VerifyInput{
+	_, err = v.Verify(context.Background(), VerifyInput{
 		Method:  "GET",
 		Path:    "/api/v1/items",
 		Headers: headers,
-	}); err != nil {
-		t.Fatalf("first verify should succeed: %v", err)
-	}
+	})
+	assert.NoError(t, err, "first verify should succeed")
 
 	_, err = v.Verify(context.Background(), VerifyInput{
 		Method:  "GET",
 		Path:    "/api/v1/items",
 		Headers: headers,
 	})
-	if !errors.Is(err, core.ErrNonceReplayed) {
-		t.Fatalf("expected nonce replayed, got: %v", err)
-	}
+	t.Logf("second verify error=%v", err)
+	assert.True(t, errors.Is(err, core.ErrNonceReplayed), "second verify with same nonce should be replayed")
 }

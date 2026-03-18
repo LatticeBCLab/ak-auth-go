@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBuildCanonicalizedResource(t *testing.T) {
@@ -15,9 +17,8 @@ func TestBuildCanonicalizedResource(t *testing.T) {
 
 	got := BuildCanonicalizedResource("/api/v1/items", q)
 	want := "/api/v1/items?a=1&a=hello%20world&b=2"
-	if got != want {
-		t.Fatalf("canonicalized resource mismatch\nwant: %s\ngot:  %s", want, got)
-	}
+	t.Logf("canonicalized resource=%s", got)
+	assert.Equal(t, want, got, "canonicalized resource should be sorted and encoded")
 }
 
 func TestBuildCanonicalizedHeaders(t *testing.T) {
@@ -27,15 +28,10 @@ func TestBuildCanonicalizedHeaders(t *testing.T) {
 	headers.Add("Content-Type", "application/json")
 
 	got := BuildCanonicalizedHeaders(headers)
-	if !strings.Contains(got, "x-acs-signature-nonce:nonce-1\n") {
-		t.Fatalf("missing nonce header in canonicalized headers: %q", got)
-	}
-	if !strings.Contains(got, "x-acs-trace-id:req-001\n") {
-		t.Fatalf("missing trace header in canonicalized headers: %q", got)
-	}
-	if strings.Contains(strings.ToLower(got), "content-type") {
-		t.Fatalf("non x-acs header should not be included: %q", got)
-	}
+	t.Logf("canonicalized headers:\n%s", got)
+	assert.Contains(t, got, "x-acs-signature-nonce:nonce-1\n", "nonce header should be included")
+	assert.Contains(t, got, "x-acs-trace-id:req-001\n", "trace header should be included")
+	assert.NotContains(t, strings.ToLower(got), "content-type", "non x-acs header should not be included")
 }
 
 func TestBuildStringToSign(t *testing.T) {
@@ -52,11 +48,8 @@ func TestBuildStringToSign(t *testing.T) {
 		Query:   q,
 		Headers: headers,
 	})
+	t.Logf("string to sign:\n%s", got)
 
-	if !strings.HasPrefix(got, "GET\napplication/json\n\n\nMon, 16 Mar 2026 10:30:00 GMT\n") {
-		t.Fatalf("unexpected stringToSign prefix: %q", got)
-	}
-	if !strings.Contains(got, "/v1/demo?size=10") {
-		t.Fatalf("unexpected canonicalized resource in stringToSign: %q", got)
-	}
+	assert.True(t, strings.HasPrefix(got, "GET\napplication/json\n\n\nMon, 16 Mar 2026 10:30:00 GMT\n"), "stringToSign should have expected prefix")
+	assert.Contains(t, got, "/v1/demo?size=10", "stringToSign should include canonicalized resource")
 }
