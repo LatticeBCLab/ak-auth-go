@@ -32,13 +32,11 @@ var (
 	ErrSecretProviderUnavailable = errors.New("secret provider unavailable")
 )
 
-// SignatureAlgorithm signs the message bytes with the given secret.
 type SignatureAlgorithm interface {
 	Name() string
 	Sign(secret []byte, message []byte) ([]byte, error)
 }
 
-// CanonicalRequestInput is the transport-neutral request input for canonicalization.
 type CanonicalRequestInput struct {
 	Method  string
 	Path    string
