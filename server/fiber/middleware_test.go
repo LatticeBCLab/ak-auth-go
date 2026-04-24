@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	fiberV2 "github.com/gofiber/fiber/v2"
+	fiberV3 "github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/LatticeBCLab/ak-auth-go/core"
@@ -34,9 +34,9 @@ func TestMiddlewareSuccess(t *testing.T) {
 	v := verifier.New(provider)
 	mw := New(v)
 
-	app := fiberV2.New()
+	app := fiberV3.New()
 	app.Use(mw.Handler())
-	app.Get("/demo", func(c *fiberV2.Ctx) error {
+	app.Get("/demo", func(c fiberV3.Ctx) error {
 		return c.SendString(c.Locals(LocalAccessKeyID).(string))
 	})
 
@@ -73,7 +73,7 @@ func TestMiddlewareSuccess(t *testing.T) {
 	assert.NoError(t, err, "read response body should succeed")
 	t.Logf("status=%d body=%s", resp.StatusCode, string(body))
 
-	assert.Equal(t, fiberV2.StatusOK, resp.StatusCode)
+	assert.Equal(t, fiberV3.StatusOK, resp.StatusCode)
 	assert.Equal(t, "ak-001", string(body))
 }
 
@@ -82,10 +82,10 @@ func TestMiddlewareMissingAuthorization(t *testing.T) {
 	v := verifier.New(provider)
 	mw := New(v)
 
-	app := fiberV2.New()
+	app := fiberV3.New()
 	app.Use(mw.Handler())
-	app.Get("/demo", func(c *fiberV2.Ctx) error {
-		return c.SendStatus(fiberV2.StatusOK)
+	app.Get("/demo", func(c fiberV3.Ctx) error {
+		return c.SendStatus(fiberV3.StatusOK)
 	})
 
 	req, err := http.NewRequest(http.MethodGet, "/demo", nil)
@@ -101,6 +101,6 @@ func TestMiddlewareMissingAuthorization(t *testing.T) {
 	assert.NoError(t, err, "read response body should succeed")
 	t.Logf("status=%d body=%s", resp.StatusCode, string(body))
 
-	assert.Equal(t, fiberV2.StatusUnauthorized, resp.StatusCode)
+	assert.Equal(t, fiberV3.StatusUnauthorized, resp.StatusCode)
 	assert.Contains(t, string(body), "missing authorization")
 }

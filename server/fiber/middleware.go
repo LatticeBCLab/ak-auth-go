@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	fiberV2 "github.com/gofiber/fiber/v2"
+	fiberV3 "github.com/gofiber/fiber/v3"
 
 	"github.com/LatticeBCLab/ak-auth-go/core"
 	"github.com/LatticeBCLab/ak-auth-go/verifier"
@@ -16,7 +16,7 @@ const (
 	LocalAlgorithm   = "ak_algorithm"
 )
 
-type ErrorHandler func(c *fiberV2.Ctx, err error) error
+type ErrorHandler func(c fiberV3.Ctx, err error) error
 
 type Option func(*Middleware)
 
@@ -44,8 +44,8 @@ func WithErrorHandler(handler ErrorHandler) Option {
 	}
 }
 
-func (m *Middleware) Handler() fiberV2.Handler {
-	return func(c *fiberV2.Ctx) error {
+func (m *Middleware) Handler() fiberV3.Handler {
+	return func(c fiberV3.Ctx) error {
 		headers := make(http.Header)
 		for k, vals := range c.GetReqHeaders() {
 			for _, v := range vals {
@@ -58,7 +58,7 @@ func (m *Middleware) Handler() fiberV2.Handler {
 			return m.errorHandler(c, err)
 		}
 
-		result, err := m.verifier.Verify(c.UserContext(), verifier.VerifyInput{
+		result, err := m.verifier.Verify(c.Context(), verifier.VerifyInput{
 			Method:   c.Method(),
 			Path:     c.Path(),
 			Query:    query,
@@ -76,18 +76,18 @@ func (m *Middleware) Handler() fiberV2.Handler {
 	}
 }
 
-func defaultErrorHandler(c *fiberV2.Ctx, err error) error {
-	status := fiberV2.StatusInternalServerError
+func defaultErrorHandler(c fiberV3.Ctx, err error) error {
+	status := fiberV3.StatusInternalServerError
 	message := err.Error()
 
 	switch {
 	case errors.Is(err, core.ErrMissingAuthorization):
-		status = fiberV2.StatusUnauthorized
+		status = fiberV3.StatusUnauthorized
 	case errors.Is(err, core.ErrInvalidAuthorization),
 		errors.Is(err, core.ErrMissingDate),
 		errors.Is(err, core.ErrInvalidDate),
 		errors.Is(err, core.ErrNonceRequired):
-		status = fiberV2.StatusBadRequest
+		status = fiberV3.StatusBadRequest
 	case errors.Is(err, core.ErrAKNotFound),
 		errors.Is(err, core.ErrAKDisabled),
 		errors.Is(err, core.ErrDateOutOfRange),
@@ -95,10 +95,10 @@ func defaultErrorHandler(c *fiberV2.Ctx, err error) error {
 		errors.Is(err, core.ErrNonceReplayed),
 		errors.Is(err, core.ErrIPNotAllowed),
 		errors.Is(err, core.ErrNotAuthorized):
-		status = fiberV2.StatusForbidden
+		status = fiberV3.StatusForbidden
 	}
 
-	return c.Status(status).JSON(fiberV2.Map{
+	return c.Status(status).JSON(fiberV3.Map{
 		"code":       status,
 		"error_code": core.ErrorCode(err),
 		"success":    false,

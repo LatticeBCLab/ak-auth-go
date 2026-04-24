@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go list *)",
+      "WebFetch(domain:docs.gofiber.io)",
+      "Bash(go mod *)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}
